@@ -22,10 +22,14 @@ if (process.env.NODE_ENV === "development") {
 // Connect to MongoDB
 connectToDB();
 
+// Load routes
+import siteRoutes from "./routes/siteRoutes";
+
 // Use routes
 app.get("/api/v1/", (req, res) => {
   res.send("Welcome to Multibourn API");
 });
+app.use("/api/v1/site", siteRoutes);
 
 // Use error middleware
 app.use(notFound);
