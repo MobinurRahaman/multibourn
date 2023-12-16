@@ -6,6 +6,7 @@ import bodyParser from "body-parser";
 import morgan from "morgan";
 import cors from "cors";
 import connectToDB from "./config/db";
+import { notFound, errorHandler } from "./middlewares/errorMiddleware";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +26,10 @@ connectToDB();
 app.get("/api/v1/", (req, res) => {
   res.send("Welcome to Multibourn API");
 });
+
+// Use error middleware
+app.use(notFound);
+app.use(errorHandler);
 
 // Start the server
 app.listen(PORT, () => {
