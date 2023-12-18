@@ -10,6 +10,7 @@ import emailService from "../services/emailService";
 interface ISiteController {
   initSite: (req: Request, res: Response, next: NextFunction) => void;
   requestOTP: (req: Request, res: Response, next: NextFunction) => void;
+  verifyEmail: (req: Request, res: Response, next: NextFunction) => void;
 }
 
 // Set OTP validity duration in minutes
@@ -167,6 +168,50 @@ const siteController: ISiteController = {
       });
     } catch (error) {
       next(error); // Use next to pass the error to the error middleware
+    }
+  }),
+  // Function to verify email using OTP
+  verifyEmail: asyncHandler(async (req, res, next) => {
+    try {
+      const { email, otp } = req.body;
+
+      // Find the site by email
+      const site = await SiteModel.findOne({ email }).select("-password");
+
+      if (!site) {
+        res.status(404);
+        throw new Error(
+          "This email address does not correspond to the super admin account for this site. Kindly verify that you have entered the correct email address."
+        );
+      }
+
+      // Check if email is already verified
+      if (!site.emailVerification.otp) {
+        res.status(400);
+        throw new Error("Super admin email is already verified.");
+      }
+
+      // Check if OTP is valid and not expired
+      if (
+        site.emailVerification.otp !== otp ||
+        new Date() > site.emailVerification.otpExpiresAt
+      ) {
+        res.status(400);
+        throw new Error("Invalid OTP or OTP expired.");
+      }
+
+      // Update site's email verification status
+      site.emailVerification.otp = null;
+      site.emailVerification.otpExpiresAt = null;
+      site.emailVerification.lastResendAt = null;
+      site.emailVerification.resendAttempts = 0;
+      await site.save();
+
+      res
+        .status(200)
+        .json({ status: "success", message: "Email verified successfully." });
+    } catch (error) {
+      next(error);
     }
   }),
 };
