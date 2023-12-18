@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .container {
+        margin: 5px;
+        background-color: #fff;
+      }
+      .header {
+        padding: 20px 20px 0 20px;
+      }
+      .header img {
+        width: 90px;
+        height: 30px;
+      }
+      .logo {
+        width: 150px;
+      }
+      .body {
+        padding: 20px;
+      }
+      .heading {
+        text-align: center;
+        color: #800;
+      }
+      .otp {
+        font-size: 30px;
+        font-weight: bold;
+        text-align: center;
+        color: #080;
+      }
+      .instructions {
+        margin-bottom: 20px;
+      }
+      .footer {
+        text-align: center;
+        padding: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <img class="logo" src="https://picsum.photos/90/30" alt="Logo" />
+      </div>
+      <div class="body">
+        <h2 class="heading">One-Time Password (OTP) Verification</h2>
+        <p class="instructions">
+          Thank you for choosing <b>Multibourn</b>. Please use the OTP below <%
+          if (target === "superadmin") { %> to complete the setup of your site and
+          become its super admin. <%} else if (target === "admin") { %> to
+            become a site admin. <%} else if (target === "user") { %> to complete
+          registration as a user. <% } %> This OTP is valid for <%= otpValidity
+          %> minutes.
+        </p>
+        <p class="otp"><%= otp %></p>
+        <p class="warning">Please don't share this OTP with anyone.</p>
+        <p class="thank-you">
+          Thanks,
+          <br />
+          <b>Multibourn</b>
+        </p>
+      </div>
+      <div class="footer">
+        &copy; <%= new Date().getFullYear() %> Multibourn. All rights reserved.
+      </div>
+    </div>
+  </body>
+</html>

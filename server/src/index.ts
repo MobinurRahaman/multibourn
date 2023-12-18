@@ -15,9 +15,14 @@ const PORT = process.env.PORT || 5000;
 app.use(bodyParser.json());
 app.use(cors());
 
+// Enable logging in the development environment
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
+
+// EJS setup
+app.set("view engine", "ejs");
+app.set("views", __dirname + "/views");
 
 // Connect to MongoDB
 connectToDB();
