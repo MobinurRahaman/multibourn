@@ -24,6 +24,8 @@ interface ISite extends Document {
   timeFormat: string;
   weekStartsOn: string;
   emailVerification: IEmailVerification;
+  resetPasswordToken: string;
+  resetPasswordExpiresAt: Date;
 }
 
 const siteSchema = new mongoose.Schema<ISite>(
@@ -141,6 +143,12 @@ const siteSchema = new mongoose.Schema<ISite>(
         type: Number,
         default: 0,
       },
+    },
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpiresAt: {
+      type: Date,
     },
   },
   { timestamps: true }

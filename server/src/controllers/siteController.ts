@@ -4,6 +4,7 @@ import asyncHandler from "express-async-handler";
 import ms from "ms";
 import ejs from "ejs";
 import path from "path";
+import crypto from "crypto";
 import generateOTP from "../utils/otpUtils";
 import emailService from "../services/emailService";
 
@@ -11,10 +12,12 @@ interface ISiteController {
   initSite: (req: Request, res: Response, next: NextFunction) => void;
   requestOTP: (req: Request, res: Response, next: NextFunction) => void;
   verifyEmail: (req: Request, res: Response, next: NextFunction) => void;
+  forgotPassword: (req: Request, res: Response, next: NextFunction) => void;
 }
 
 // Set OTP validity duration in minutes
 const OTP_VALIDITY_MINUTES = 10;
+const RESET_TOKEN_VALIDITY_MINUTES = 10;
 
 const siteController: ISiteController = {
   // Function to initialize the site
@@ -210,6 +213,54 @@ const siteController: ISiteController = {
       res
         .status(200)
         .json({ status: "success", message: "Email verified successfully." });
+    } catch (error) {
+      next(error);
+    }
+  }),
+  forgotPassword: asyncHandler(async (req, res, next) => {
+    try {
+      const { email } = req.body;
+
+      // Find the site by email
+      const site = await SiteModel.findOne({ email }).select("-password");
+
+      if (!site) {
+        res.status(404);
+        throw new Error(
+          "This email address does not correspond to the super admin account for this site. Kindly verify that you have entered the correct email address."
+        );
+      }
+
+      // Generate a random reset token
+      const resetToken = await crypto.randomBytes(20).toString("hex");
+      const resetTokenExpiresAt = new Date(
+        Date.now() + RESET_TOKEN_VALIDITY_MINUTES * 60 * 1000
+      );
+      site.resetPasswordToken = resetToken;
+      site.resetPasswordExpiresAt = resetTokenExpiresAt;
+      await site.save();
+
+      // Render the EJS template with dynamic content
+      const emailContent = await ejs.renderFile(
+        path.join(__dirname, "../views/reset-password-email.ejs"),
+        {
+          userName: "super admin",
+          resetPasswordLink: `${process.env.FRONTEND_BASE_URL}/site/reset-password?resetToken=${resetToken}`,
+          resetTokenValidity: RESET_TOKEN_VALIDITY_MINUTES,
+        }
+      );
+
+      // Send password reset instructions via email
+      await emailService.sendEmail(
+        email,
+        "Multibourn Password Reset",
+        emailContent
+      );
+
+      res.status(200).json({
+        status: "success",
+        message: "Password reset email sent successfully.",
+      });
     } catch (error) {
       next(error);
     }
