@@ -5,14 +5,17 @@ import ms from "ms";
 import ejs from "ejs";
 import path from "path";
 import crypto from "crypto";
+import bcrypt from "bcrypt";
 import generateOTP from "../utils/otpUtils";
 import emailService from "../services/emailService";
+import { validationResult, body } from "express-validator";
 
 interface ISiteController {
   initSite: (req: Request, res: Response, next: NextFunction) => void;
   requestOTP: (req: Request, res: Response, next: NextFunction) => void;
   verifyEmail: (req: Request, res: Response, next: NextFunction) => void;
   forgotPassword: (req: Request, res: Response, next: NextFunction) => void;
+  resetPassword: (req: Request, res: Response, next: NextFunction) => void;
 }
 
 // Set OTP validity duration in minutes
@@ -261,6 +264,68 @@ const siteController: ISiteController = {
         status: "success",
         message: "Password reset email sent successfully.",
       });
+    } catch (error) {
+      next(error);
+    }
+  }),
+  resetPassword: asyncHandler(async (req, res, next) => {
+    try {
+      const { resetToken, newPassword } = req.body;
+
+      // Find the site with the provided reset token that is not expired
+      const site = await SiteModel.findOne({
+        resetPasswordToken: resetToken,
+        resetPasswordExpiresAt: { $gt: new Date() },
+      });
+
+      if (!site) {
+        res.status(400);
+        throw new Error("Invalid or expired reset token.");
+      }
+
+      // Validate the raw password using express-validator before hashing to prevent mongoose from validating the hashed password
+      await body("newPassword")
+        .notEmpty()
+        .withMessage("Password is required.")
+        .isLength({ min: 8 })
+        .withMessage("Password must be at least 8 characters long.")
+        .isLength({ max: 20 })
+        .withMessage("Password cannot exceed 20 characters.")
+        .matches(
+          /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/
+        )
+        .withMessage(
+          "Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be 8 to 20 characters long."
+        )
+        .run(req);
+
+      // Pass validation errors to the error middleware
+      const validationErrors = validationResult(req);
+      if (!validationErrors.isEmpty()) {
+        res.status(400);
+        const error = new Error(validationErrors.array()[0].msg);
+        next({
+          message: "validationErrors",
+          errors: { newPassword: validationErrors.array()[0].msg },
+          stack: error.stack,
+        });
+        return;
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update the password and reset token fields
+      site.password = hashedPassword;
+      site.resetPasswordToken = undefined;
+      site.resetPasswordExpiresAt = undefined;
+
+      // Bypass password validation by mongoose because it has already done using express-validator
+      await site.save({ validateBeforeSave: false });
+
+      res
+        .status(200)
+        .json({ status: "success", message: "Password reset successfully." });
     } catch (error) {
       next(error);
     }
