@@ -13,6 +13,10 @@ interface IEmailVerification {
   resendAttempts: number;
 }
 
+interface IRefreshTokens {
+  token: string;
+}
+
 interface ISite extends Document {
   siteName: string;
   siteDescription: string;
@@ -24,6 +28,7 @@ interface ISite extends Document {
   timeFormat: string;
   weekStartsOn: string;
   emailVerification: IEmailVerification;
+  refreshTokens: IRefreshTokens[];
   resetPasswordToken: string;
   resetPasswordExpiresAt: Date;
 }
@@ -144,6 +149,7 @@ const siteSchema = new mongoose.Schema<ISite>(
         default: 0,
       },
     },
+    refreshTokens: [{ token: { type: String } }],
     resetPasswordToken: {
       type: String,
     },

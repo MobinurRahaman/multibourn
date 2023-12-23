@@ -9,6 +9,7 @@ import bcrypt from "bcrypt";
 import generateOTP from "../utils/otpUtils";
 import emailService from "../services/emailService";
 import { validationResult, body } from "express-validator";
+import { generateAccessToken, generateRefreshToken } from "../utils/authUtils";
 
 interface ISiteController {
   initSite: (req: Request, res: Response, next: NextFunction) => void;
@@ -16,6 +17,7 @@ interface ISiteController {
   verifyEmail: (req: Request, res: Response, next: NextFunction) => void;
   forgotPassword: (req: Request, res: Response, next: NextFunction) => void;
   resetPassword: (req: Request, res: Response, next: NextFunction) => void;
+  login: (req: Request, res: Response, next: NextFunction) => void;
 }
 
 // Set OTP validity duration in minutes
@@ -326,6 +328,34 @@ const siteController: ISiteController = {
       res
         .status(200)
         .json({ status: "success", message: "Password reset successfully." });
+    } catch (error) {
+      next(error);
+    }
+  }),
+  login: asyncHandler(async (req, res, next) => {
+    try {
+      const { email, password } = req.body;
+
+      const site = await SiteModel.findOne({ email });
+
+      if (!site || !(await bcrypt.compare(password, site.password))) {
+        res.status(401);
+        throw new Error("Email or password are incorrect.");
+      }
+
+      // Generate JWT and refresh token
+      const accessToken = generateAccessToken({ siteId: site._id });
+      const refreshToken = generateRefreshToken();
+
+      // Save refresh token to the database
+      site.refreshTokens.push({ token: refreshToken });
+      await site.save({ validateBeforeSave: false });
+
+      // Set tokens as HTTP-only cookies
+      res.cookie("access_token", accessToken, { httpOnly: true });
+      res.cookie("refresh_token", refreshToken, { httpOnly: true });
+
+      res.status(200).json({ status: "success", message: "Login successful." });
     } catch (error) {
       next(error);
     }
