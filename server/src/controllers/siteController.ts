@@ -9,7 +9,11 @@ import bcrypt from "bcrypt";
 import generateOTP from "../utils/otpUtils";
 import emailService from "../services/emailService";
 import { validationResult, body } from "express-validator";
-import { generateAccessToken, generateRefreshToken } from "../utils/authUtils";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyToken,
+} from "../utils/authUtils";
 
 interface ISiteController {
   initSite: (req: Request, res: Response, next: NextFunction) => void;
@@ -18,6 +22,7 @@ interface ISiteController {
   forgotPassword: (req: Request, res: Response, next: NextFunction) => void;
   resetPassword: (req: Request, res: Response, next: NextFunction) => void;
   login: (req: Request, res: Response, next: NextFunction) => void;
+  refreshToken: (req: Request, res: Response, next: NextFunction) => void;
 }
 
 // Set OTP validity duration in minutes
@@ -356,6 +361,46 @@ const siteController: ISiteController = {
       res.cookie("super_admin_refresh_token", refreshToken, { httpOnly: true });
 
       res.status(200).json({ status: "success", message: "Login successful." });
+    } catch (error) {
+      next(error);
+    }
+  }),
+  refreshToken: asyncHandler(async (req, res, next) => {
+    try {
+      // Extract refresh token from the cookies
+      const refreshToken = req.cookies.super_admin_refresh_token;
+
+      // Check if refresh token exists
+      if (!refreshToken) {
+        res.status(401);
+        throw new Error("Super admin refresh token does not exist.");
+      }
+
+      // Find the site associated with the provided refresh token
+      const site = await SiteModel.findOne({
+        "refreshTokens.token": refreshToken,
+      });
+
+      // If no matching site is found, deny the refresh request
+      if (!site) {
+        res.status(401);
+        throw new Error("Invalid refresh token.");
+      }
+
+      // Verify the integrity of the refresh token
+      verifyToken(refreshToken, process.env.REFRESH_TOKEN_SECRET_KEY);
+
+      // Generate a new access token
+      const newAccessToken = generateAccessToken({ siteId: site._id });
+
+      // Set the new access token in an HTTP-only cookie
+      res.cookie("super_admin_access_token", newAccessToken, {
+        httpOnly: true,
+      });
+
+      res
+        .status(200)
+        .json({ status: "success", message: "Token refreshed successfully." });
     } catch (error) {
       next(error);
     }

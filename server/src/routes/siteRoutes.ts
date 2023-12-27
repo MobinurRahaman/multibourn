@@ -9,5 +9,6 @@ router.post("/verify-email", siteController.verifyEmail);
 router.post("/forgot-password", siteController.forgotPassword);
 router.post("/reset-password", siteController.resetPassword);
 router.post("/login", siteController.login);
+router.get("/refresh-token", siteController.refreshToken);
 
 export default router;

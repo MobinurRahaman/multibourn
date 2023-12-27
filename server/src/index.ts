@@ -3,6 +3,7 @@ dotenv.config(); // load .env variables
 
 import express from "express";
 import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import cors from "cors";
 import connectToDB from "./config/db";
@@ -14,6 +15,7 @@ const PORT = process.env.PORT || 5000;
 // Middlewares
 app.use(bodyParser.json());
 app.use(cors());
+app.use(cookieParser());
 
 // Enable logging in the development environment
 if (process.env.NODE_ENV === "development") {
