@@ -352,8 +352,8 @@ const siteController: ISiteController = {
       await site.save({ validateBeforeSave: false });
 
       // Set tokens as HTTP-only cookies
-      res.cookie("access_token", accessToken, { httpOnly: true });
-      res.cookie("refresh_token", refreshToken, { httpOnly: true });
+      res.cookie("super_admin_access_token", accessToken, { httpOnly: true });
+      res.cookie("super_admin_refresh_token", refreshToken, { httpOnly: true });
 
       res.status(200).json({ status: "success", message: "Login successful." });
     } catch (error) {
