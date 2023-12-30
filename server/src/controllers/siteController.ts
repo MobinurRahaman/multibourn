@@ -15,13 +15,24 @@ import {
   verifyToken,
 } from "../utils/authUtils";
 
+interface ILoginTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
 interface ISiteController {
   initSite: (req: Request, res: Response, next: NextFunction) => void;
   requestOTP: (req: Request, res: Response, next: NextFunction) => void;
   verifyEmail: (req: Request, res: Response, next: NextFunction) => void;
   forgotPassword: (req: Request, res: Response, next: NextFunction) => void;
   resetPassword: (req: Request, res: Response, next: NextFunction) => void;
-  login: (req: Request, res: Response, next: NextFunction) => void;
+  login: (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    isCalledFromInitSite?: boolean,
+    callback?: (tokens: ILoginTokens) => void
+  ) => void;
   refreshToken: (req: Request, res: Response, next: NextFunction) => void;
 }
 
@@ -75,9 +86,45 @@ const siteController: ISiteController = {
     site
       .save()
       .then(() => {
-        res.status(201).json({
-          status: "success",
-          message: "Site initialized successfully",
+        // Append email and password to the existing req.body of login function
+        req.body = {
+          ...req.body,
+          email,
+          password,
+        };
+
+        // Call login with the modified req object for initial authentication
+        siteController.login(req, res, next, true, (tokens) => {
+          // If the login function is called from the initSite route, it will return login tokens as a callback
+          // Destructure the tokens
+          const { accessToken, refreshToken } = tokens;
+
+          // If the tokens are returned by the login function, set them in httpOnly cookies
+          if (accessToken && refreshToken) {
+            // Set tokens as HTTP-only cookies
+            res.cookie("super_admin_access_token", accessToken, {
+              httpOnly: true,
+            });
+            res.cookie("super_admin_refresh_token", refreshToken, {
+              httpOnly: true,
+            });
+
+            // After login, proceed to requestOTP
+            siteController.requestOTP(req, res, next);
+
+            // If site data is saved to the database, logged in, and an email verification is sent, then send the following response
+            res.status(201).json({
+              status: "success",
+              message: "Site initialized successfully",
+            });
+          } else {
+            // If only site data is saved to the database, send a response to log in and request an email verification OTP
+            res.status(201).json({
+              status: "success",
+              message:
+                "Site initialized successfully. Please log in and request an email verification OTP.",
+            });
+          }
         });
       })
       .catch((err: Error) => {
@@ -175,10 +222,13 @@ const siteController: ISiteController = {
         emailContent
       );
 
-      res.status(200).json({
-        status: "success",
-        message: "An OTP has been successfully sent to your email inbox.",
-      });
+      // Check if a response has been sent (from initSite function) before sending a new response
+      if (!res.headersSent) {
+        res.status(200).json({
+          status: "success",
+          message: "An OTP has been successfully sent to your email inbox.",
+        });
+      }
     } catch (error) {
       next(error); // Use next to pass the error to the error middleware
     }
@@ -337,34 +387,56 @@ const siteController: ISiteController = {
       next(error);
     }
   }),
-  login: asyncHandler(async (req, res, next) => {
-    try {
-      const { email, password } = req.body;
+  login: asyncHandler(
+    async (
+      req,
+      res,
+      next,
+      isCalledFromInitSite = false,
+      callback?: (result: ILoginTokens) => void
+    ) => {
+      try {
+        const { email, password } = req.body;
 
-      const site = await SiteModel.findOne({ email });
+        const site = await SiteModel.findOne({ email });
+        // Check if the email or password is correct
+        if (!site || !(await bcrypt.compare(password, site.password))) {
+          res.status(401);
+          throw new Error("Email or password is incorrect.");
+        }
 
-      if (!site || !(await bcrypt.compare(password, site.password))) {
-        res.status(401);
-        throw new Error("Email or password are incorrect.");
+        // Generate JWT and refresh token
+        const accessToken = generateAccessToken({ siteId: site._id });
+        const refreshToken = generateRefreshToken();
+
+        // Save refresh token to the database
+        site.refreshTokens.push({ token: refreshToken });
+        await site.save({ validateBeforeSave: false });
+
+        // If called independently from the login route, send login tokens in cookies and provide a JSON response
+        if (!isCalledFromInitSite) {
+          // Check if a response has been sent before sending a new response
+          if (!res.headersSent) {
+            // Set tokens as HTTP-only cookies
+            res.cookie("super_admin_access_token", accessToken, {
+              httpOnly: true,
+            });
+            res.cookie("super_admin_refresh_token", refreshToken, {
+              httpOnly: true,
+            });
+            res
+              .status(200)
+              .json({ status: "success", message: "Login successful." });
+          }
+        }
+
+        // If called from initSite, return the login tokens
+        callback({ accessToken, refreshToken });
+      } catch (error) {
+        next(error);
       }
-
-      // Generate JWT and refresh token
-      const accessToken = generateAccessToken({ siteId: site._id });
-      const refreshToken = generateRefreshToken();
-
-      // Save refresh token to the database
-      site.refreshTokens.push({ token: refreshToken });
-      await site.save({ validateBeforeSave: false });
-
-      // Set tokens as HTTP-only cookies
-      res.cookie("super_admin_access_token", accessToken, { httpOnly: true });
-      res.cookie("super_admin_refresh_token", refreshToken, { httpOnly: true });
-
-      res.status(200).json({ status: "success", message: "Login successful." });
-    } catch (error) {
-      next(error);
     }
-  }),
+  ),
   refreshToken: asyncHandler(async (req, res, next) => {
     try {
       // Extract refresh token from the cookies
