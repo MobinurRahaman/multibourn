@@ -31,12 +31,14 @@ connectToDB();
 
 // Load routes
 import siteRoutes from "./routes/siteRoutes";
+import mediaGalleryRoutes from "./routes/mediGalleryRoutes";
 
 // Use routes
 app.get("/api/v1/", (req, res) => {
   res.send("Welcome to Multibourn API");
 });
 app.use("/api/v1/site", siteRoutes);
+app.use("/api/v1/mediagallery", mediaGalleryRoutes);
 
 // Use error middleware
 app.use(notFound);
