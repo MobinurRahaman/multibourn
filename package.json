@@ -10,7 +10,9 @@
     "server"
   ],
   "scripts": {
+    "start:server": "yarn workspace @multibourn/server start",
     "start:server:dev": "yarn workspace @multibourn/server dev",
+    "start": "yarn run start:server",
     "start:dev": "yarn run start:server:dev",
     "build-server": "yarn workspace @multibourn/server build",
     "test": "echo \"Error: no test specified\" && exit 1"
