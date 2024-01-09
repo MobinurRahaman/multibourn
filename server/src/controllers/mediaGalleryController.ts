@@ -1,10 +1,11 @@
-import { NextFunction, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import MediaGallery, { IMediaGallery } from "../models/mediaGalleryModel";
 import { CustomRequest } from "../middlewares/mediaUploadMiddleware";
 
 interface IMediaGalleryController {
   createMedia: (req: CustomRequest, res: Response, next: NextFunction) => void;
+  getAllMedia: (req: Request, res: Response, next: NextFunction) => void;
 }
 
 const mediaGalleryController: IMediaGalleryController = {
@@ -32,6 +33,16 @@ const mediaGalleryController: IMediaGalleryController = {
         .json({ status: "success", message: "Media created successfully" });
     } catch (error) {
       // Pass any caught errors to the error middleware
+      next(error);
+    }
+  }),
+
+  // Get all media items
+  getAllMedia: asyncHandler(async (req, res, next) => {
+    try {
+      const allMedia = await MediaGallery.find();
+      res.status(200).json(allMedia);
+    } catch (error) {
       next(error);
     }
   }),

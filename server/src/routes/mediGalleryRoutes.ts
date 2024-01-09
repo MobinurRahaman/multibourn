@@ -15,4 +15,7 @@ router.post(
   mediaGalleryController.createMedia
 );
 
+// Get all media items
+router.get("/", mediaGalleryController.getAllMedia);
+
 export default router;
