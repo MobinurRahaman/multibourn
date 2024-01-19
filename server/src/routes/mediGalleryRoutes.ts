@@ -18,4 +18,7 @@ router.post(
 // Get all media items
 router.get("/", mediaGalleryController.getAllMedia);
 
+// Get a specific media item by ID
+router.get("/:id", mediaGalleryController.getMediaById);
+
 export default router;

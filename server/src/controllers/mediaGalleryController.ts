@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import mongoose from "mongoose";
 import asyncHandler from "express-async-handler";
 import MediaGallery, { IMediaGallery } from "../models/mediaGalleryModel";
 import { CustomRequest } from "../middlewares/mediaUploadMiddleware";
@@ -6,6 +7,7 @@ import { CustomRequest } from "../middlewares/mediaUploadMiddleware";
 interface IMediaGalleryController {
   createMedia: (req: CustomRequest, res: Response, next: NextFunction) => void;
   getAllMedia: (req: Request, res: Response, next: NextFunction) => void;
+  getMediaById: (req: Request, res: Response, next: NextFunction) => void;
 }
 
 const mediaGalleryController: IMediaGalleryController = {
@@ -44,6 +46,35 @@ const mediaGalleryController: IMediaGalleryController = {
       res.status(200).json(allMedia);
     } catch (error) {
       next(error);
+    }
+  }),
+
+  // Get a specific media item by ID
+  getMediaById: asyncHandler(async (req, res, next) => {
+    try {
+      const mediaId = req.params.id;
+
+      const isValidObjectId = mongoose.Types.ObjectId.isValid(mediaId);
+
+      if (!isValidObjectId) {
+        res.status(404);
+        throw new Error("No media found by the specified ID");
+      }
+
+      const media = await MediaGallery.findById(mediaId);
+
+      if (!media) {
+        res.status(404);
+        throw new Error("No media found by the specified ID");
+      }
+
+      res.status(200).json(media);
+    } catch (error) {
+      if (error.name === "CastError") {
+        res.status(404).json({ error: "Invalid media ID format" });
+      } else {
+        next(error);
+      }
     }
   }),
 };
