@@ -6,6 +6,7 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import cors from "cors";
+import path from "path";
 import connectToDB from "./config/db";
 import { notFound, errorHandler } from "./middlewares/errorMiddleware";
 
@@ -28,6 +29,9 @@ app.set("views", __dirname + "/views");
 
 // Connect to MongoDB
 connectToDB();
+
+// Middleware to serve static files from the "uploads" directory
+app.use("/uploads", express.static("uploads"));
 
 // Load routes
 import siteRoutes from "./routes/siteRoutes";
