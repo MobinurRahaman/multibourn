@@ -15,6 +15,7 @@ interface IMediaGalleryController {
     res: Response,
     next: NextFunction
   ) => void;
+  deleteMediaById: (req: Request, res: Response, next: NextFunction) => void;
 }
 
 const mediaGalleryController: IMediaGalleryController = {
@@ -146,6 +147,37 @@ const mediaGalleryController: IMediaGalleryController = {
       }
 
       next(error);
+    }
+  }),
+
+  // Function to delete a specific media item by ID
+  deleteMediaById: asyncHandler(async (req, res, next) => {
+    try {
+      const mediaId = req.params.id;
+
+      const isValidObjectId = mongoose.Types.ObjectId.isValid(mediaId);
+
+      if (!isValidObjectId) {
+        res.status(404);
+        throw new Error("No media found by the specified ID");
+      }
+
+      const media = await MediaGallery.findByIdAndDelete(mediaId);
+
+      if (!media) {
+        res.status(404);
+        throw new Error("No media found by the specified ID");
+      }
+
+      res
+        .status(200)
+        .json({ status: "succeess", message: "Media deleted successfully" });
+    } catch (error) {
+      if (error.name === "CastError") {
+        res.status(404).json({ error: "Invalid media ID format" });
+      } else {
+        next(error);
+      }
     }
   }),
 };

@@ -29,4 +29,7 @@ router.put(
   mediaGalleryController.updateMediaById
 );
 
+// Delete a specific media item by ID
+router.delete("/:id", mediaGalleryController.deleteMediaById);
+
 export default router;
